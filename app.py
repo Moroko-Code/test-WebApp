@@ -85,12 +85,11 @@ def insert_dummy_data_if_empty():
         except pyodbc.Error as e:
             # Handle error where table might not exist at all (initial run)
             print(f"❌ Insertion failed. Ensure table '{TABLE_NAME}' exists with (name, price, description) columns. Error: {e}")
-            pass # Continue to allow the SELECT query to fail gracefully if the table is the issue.
-            
+            pass # Continue to allow the SELECT query to fail gracefully if the table is the issue.  
     else:
         print(f"INFO: Table '{TABLE_NAME}' already contains {count[0]} records. Skipping insertion.")
 
-# --- Flask Route ---
+# --- Flask Route start here ---
 @app.route("/")
 def index():
     # 1. Ensure data is available (for first run)

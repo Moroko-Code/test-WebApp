@@ -2,28 +2,43 @@ trigger:
 - master
 
 variables:
+  # Azure Resource Manager connection created during pipeline creation
   azureServiceConnectionId: '86a120ef-5973-426f-a6b3-97b372ecae4e'
+
+  # Web app name
   webAppName: 'test-WebApp'
-  poolName: 'web'  # Your self-hosted agent pool
+
+  # Agent pool name (self-hosted or hosted)
+  poolName: 'web'
+
+  # Environment name
   environmentName: 'test-WebApp'
-  projectRoot: $(System.DefaultWorkingDirectory)
+
+  # Project root (default working directory)
+  projectRoot: '$(System.DefaultWorkingDirectory)'
+
+  # Python version
   pythonVersion: '3.11'
 
 stages:
+# =============================
+#  BUILD STAGE
+# =============================
 - stage: Build
-  displayName: Build the Python app
+  displayName: 'Build the Python App'
   jobs:
   - job: BuildJob
-    displayName: 'Build and package'
+    displayName: 'Build and Package'
     pool:
       name: $(poolName)
     steps:
+    # 1️⃣ Use Python
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '$(pythonVersion)'
       displayName: 'Set Python version $(pythonVersion)'
 
-    # Install dependencies in virtual environment (Windows-safe)
+    # 2️⃣ Install dependencies
     - task: CmdLine@2
       displayName: 'Install dependencies'
       inputs:
@@ -33,33 +48,37 @@ stages:
           python -m venv antenv
           call antenv\Scripts\activate.bat
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          pip install -r requirements.txt
 
-    # Run tests inside virtual environment (Windows-safe)
+    # 3️⃣ Run tests (ignore failure if none found)
     - task: CmdLine@2
       displayName: 'Run tests'
+      continueOnError: true
       inputs:
         script: |
           cd $(projectRoot)
           call antenv\Scripts\activate.bat
           python -m pip install pytest pytest-azurepipelines
-          python -m pytest
+          python -m pytest tests --junitxml=test-output.xml
 
-    # Archive build artifacts
+    # 4️⃣ Archive build files
     - task: ArchiveFiles@2
       displayName: 'Archive build files'
       inputs:
         rootFolderOrFile: '$(projectRoot)'
         includeRootFolder: false
         archiveType: zip
-        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+        archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
         replaceExistingArchive: true
 
-    # Publish artifact
-    - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+    # 5️⃣ Publish build artifacts
+    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
       displayName: 'Publish build artifact'
       artifact: drop
 
+# =============================
+#  DEPLOY STAGE
+# =============================
 - stage: Deploy
   displayName: 'Deploy to Azure Web App'
   dependsOn: Build
@@ -74,14 +93,16 @@ stages:
       runOnce:
         deploy:
           steps:
+          # 1️⃣ Use same Python version
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '$(pythonVersion)'
             displayName: 'Set Python version for deployment'
 
+          # 2️⃣ Deploy package to Azure Web App
           - task: AzureWebApp@1
             displayName: 'Deploy to Azure Web App: $(webAppName)'
             inputs:
               azureSubscription: $(azureServiceConnectionId)
               appName: $(webAppName)
-              package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip

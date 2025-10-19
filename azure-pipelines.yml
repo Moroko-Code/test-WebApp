@@ -23,26 +23,27 @@ stages:
         versionSpec: '$(pythonVersion)'
       displayName: 'Set Python version $(pythonVersion)'
 
-    # Install dependencies in virtual environment (Windows)
+    # Install dependencies in virtual environment (Windows-safe)
     - task: CmdLine@2
       displayName: 'Install dependencies'
       inputs:
         script: |
           cd $(projectRoot)
+          if exist antenv rmdir /s /q antenv
           python -m venv antenv
           call antenv\Scripts\activate.bat
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
 
-    # Run tests inside virtual environment (Windows)
+    # Run tests inside virtual environment (Windows-safe)
     - task: CmdLine@2
       displayName: 'Run tests'
       inputs:
         script: |
           cd $(projectRoot)
           call antenv\Scripts\activate.bat
-          pip install pytest pytest-azurepipelines
-          pytest
+          python -m pip install pytest pytest-azurepipelines
+          python -m pytest
 
     # Archive build artifacts
     - task: ArchiveFiles@2

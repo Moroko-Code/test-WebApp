@@ -9,7 +9,7 @@ variables:
   webAppName: 'test-WebApp'
 
   # Agent pool name for Microsoft-hosted agent (use your self-hosted pool name if needed)
-  poolName: 'web-App-pool'
+  poolName: 'web'
 
   # Environment name
   environmentName: 'test-WebApp'

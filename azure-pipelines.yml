@@ -2,22 +2,11 @@ trigger:
 - master
 
 variables:
-  # Azure Resource Manager connection created during pipeline creation
   azureServiceConnectionId: '86a120ef-5973-426f-a6b3-97b372ecae4e'
-
-  # Web app name
   webAppName: 'test-WebApp'
-
-  # Agent pool name for Microsoft-hosted agent (use your self-hosted pool name if needed)
-  poolName: 'web'
-
-  # Environment name
+  poolName: 'web'  # Your self-hosted agent pool
   environmentName: 'test-WebApp'
-
-  # Project root folder: directory containing manage.py or main python file
   projectRoot: $(System.DefaultWorkingDirectory)
-
-  # Python version (update if required)
   pythonVersion: '3.11'
 
 stages:
@@ -27,37 +16,46 @@ stages:
   - job: BuildJob
     displayName: 'Build and package'
     pool:
-      name: $(poolName)  # Use 'ubuntu-latest' for hosted, or your own self-hosted pool name
+      name: $(poolName)
     steps:
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '$(pythonVersion)'
       displayName: 'Set Python version $(pythonVersion)'
 
-    - script: |
-        python -m venv antenv
-        call antenv\Scripts\activate.bat
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-      workingDirectory: $(projectRoot)
+    # Install dependencies in virtual environment (Windows)
+    - task: CmdLine@2
       displayName: 'Install dependencies'
-      shell: cmd
-      
-    - script: |
-        pip install pytest pytest-azurepipelines
-        pytest
-      displayName: 'Run tests'
+      inputs:
+        script: |
+          python -m venv antenv
+          call antenv\Scripts\activate.bat
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      workingDirectory: $(projectRoot)
 
+    # Run tests inside virtual environment (Windows)
+    - task: CmdLine@2
+      displayName: 'Run tests'
+      inputs:
+        script: |
+          call antenv\Scripts\activate.bat
+          pip install pytest pytest-azurepipelines
+          pytest
+      workingDirectory: $(projectRoot)
+
+    # Archive build artifacts
     - task: ArchiveFiles@2
       displayName: 'Archive build files'
       inputs:
         rootFolderOrFile: '$(projectRoot)'
         includeRootFolder: false
         archiveType: zip
-        archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
         replaceExistingArchive: true
 
-    - publish: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+    # Publish artifact
+    - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
       displayName: 'Publish build artifact'
       artifact: drop
 
@@ -69,7 +67,7 @@ stages:
   - deployment: DeployJob
     displayName: 'Deploy to Azure Web App'
     pool:
-      name: $(poolName)  # Use same agent pool for deployment or specify different pool
+      name: $(poolName)
     environment: $(environmentName)
     strategy:
       runOnce:
@@ -85,4 +83,4 @@ stages:
             inputs:
               azureSubscription: $(azureServiceConnectionId)
               appName: $(webAppName)
-              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+              package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'

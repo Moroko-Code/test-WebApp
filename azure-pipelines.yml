@@ -36,12 +36,13 @@ stages:
 
     - script: |
         python -m venv antenv
-        source antenv/bin/activate
+        call antenv\Scripts\activate.bat
         python -m pip install --upgrade pip
         pip install -r requirements.txt
       workingDirectory: $(projectRoot)
       displayName: 'Install dependencies'
-
+      shell: cmd
+      
     - script: |
         pip install pytest pytest-azurepipelines
         pytest

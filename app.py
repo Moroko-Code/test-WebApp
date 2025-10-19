@@ -6,7 +6,7 @@ app = Flask(__name__)
 # Define a simple route
 @app.route("/")
 def hello():
-    return "Hello, World! 👋 This Flask app is running on Azure App Service."
+    return "Hello, World! 👋 This Flask app is running on Azure App Service. Automating deployents using CI/CD Azure pipelines,"
 
 # Run the app (only when run directly)
 if __name__ == "__main__":
